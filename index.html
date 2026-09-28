@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Small Business POS & Inventory — Mobile PRO</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<style>
+:root{--p:#2563eb;--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#64748b;--border:#e2e8f0;--danger:#dc2626;--ok:#16a34a}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px}
+.btn{background:var(--p);color:#fff}.btn2{background:#eef2ff;color:#1d4ed8}.danger{background:#fee2e2;color:#991b1b}.ghost{background:#fff;border:1px solid var(--border)}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#eff6ff,#f8fafc)}
+.loginbox{background:#fff;width:min(420px,100%);padding:30px;border-radius:20px;box-shadow:0 15px 50px #0001}
+.logo{width:58px;height:58px;border-radius:16px;background:#dbeafe;display:grid;place-items:center;font-size:28px;margin-bottom:16px}
+h1,h2,h3{margin:0 0 12px}.muted{color:var(--muted)}label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:#fff}
+.app{display:none;min-height:100vh}.top{height:68px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800}.brand img{width:38px;height:38px;object-fit:contain;border-radius:8px}
+.layout{display:flex}.side{width:230px;background:#fff;border-right:1px solid var(--border);min-height:calc(100vh - 68px);padding:15px;position:sticky;top:68px}.nav{width:100%;text-align:left;background:#fff;color:#334155;margin:3px 0}.nav.active{background:#eff6ff;color:#1d4ed8;font-weight:700}
+main{flex:1;padding:24px;max-width:1400px}.view{display:none}.view.active{display:block}
+.grid{display:grid;gap:15px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:18px 0}.card{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:18px}.statnum{font-size:27px;font-weight:800;margin-top:7px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;background:#fff}.table th,.table td{padding:11px;border-bottom:1px solid var(--border);text-align:left;font-size:14px;white-space:nowrap}.table th{background:#f8fafc}
+.alert{padding:12px;border-radius:10px;background:#fff7ed;color:#9a3412;margin:10px 0}.ok{background:#f0fdf4;color:#166534}.modal{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;padding:18px;z-index:20}.modal.open{display:flex}.modalbox{background:#fff;width:min(700px,100%);max-height:90vh;overflow:auto;border-radius:16px;padding:20px}
+.logo-preview{width:80px;height:80px;border:1px dashed var(--border);border-radius:12px;object-fit:contain}
+.invoice{max-width:800px;margin:auto}.invoice-head{display:flex;justify-content:space-between;gap:20px}.line{border-top:1px solid var(--border);margin:18px 0}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.side{width:70px;padding:8px}.nav span{display:none}.nav{text-align:center}.layout main{padding:15px}}
+@media(max-width:600px){.stats{grid-template-columns:1fr 1fr}.top{padding:0 12px}.brand .bname{display:none}}
+@media print{body{background:#fff}.top,.side,.no-print{display:none!important}main{padding:0}.view{display:none!important}.view.printable{display:block!important}.card{border:0}}
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#111827">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<section id="login" class="login">
+  <div class="loginbox">
+    <div class="logo">📊</div>
+    <h1>Inventory & Sales Tracker</h1>
+    <p class="muted">Small Business POS • GitHub Local</p>
+    <label>Username</label><input id="loginUser" value="admin" autocomplete="username">
+    <label>Password</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="Enter password">
+    <button class="btn" style="width:100%;margin-top:15px" onclick="login()">Sign in</button>
+    <p id="authStatus" class="muted" style="font-size:12px;margin-top:14px">Your POS data is saved locally on this device/browser. No Supabase connection required.</p>
+  </div>
+</section>
+
+<section id="app" class="app">
+<header class="top">
+  <div class="brand"><img id="topLogo" style="display:none"><span class="bname" id="businessName">My Small Business</span></div>
+  <div class="row"><span id="currentUserBadge" class="muted" style="font-size:12px"></span><button class="ghost" onclick="backup()">Backup</button><button class="btn2" onclick="logout()">Log out</button></div>
+</header>
+<div class="layout">
+<aside class="side">
+  <button class="nav active" onclick="show('dashboard',this)">📊 <span>Dashboard</span></button>
+  <button class="nav" onclick="show('pos',this)">🛒 <span>POS</span></button>
+  <button class="nav" onclick="show('products',this)">📦 <span>Products</span></button>
+  <button class="nav" onclick="show('inventory',this)">🔄 <span>Inventory</span></button>
+  <button class="nav" onclick="show('sales',this)">🧾 <span>Sales</span></button>
+  <button class="nav" onclick="show('customers',this)">👥 <span>Customers</span></button>
+  <button class="nav" onclick="show('expenses',this)">💸 <span>Expenses</span></button>
+  <button class="nav" onclick="show('reports',this)">📈 <span>Reports</span></button>
+  <button class="nav" onclick="show('settings',this)">⚙️ <span>Settings</span></button>
+</aside>
+
+<main>
+<section id="dashboard" class="view active">
+<div class="row between"><div><h2>Dashboard</h2><div class="muted">Business overview</div></div><button class="btn" onclick="openSale()">+ New Sale</button></div>
+<div class="grid stats">
+<div class="card"><div class="muted">Total Sales</div><div class="statnum" id="statSales">₱0</div></div>
+<div class="card"><div class="muted">Gross Profit</div><div class="statnum" id="statProfit">₱0</div></div>
+<div class="card"><div class="muted">Products</div><div class="statnum" id="statProducts">0</div></div>
+<div class="card"><div class="muted">Low Stock</div><div class="statnum" id="statLow">0</div></div>
+</div>
+<div id="lowAlert"></div>
+<div class="grid" style="grid-template-columns:2fr 1fr;margin-bottom:15px">
+<div class="card"><h3>Sales Overview</h3><canvas id="salesChart" height="150"></canvas></div>
+<div class="card"><h3>Payment Methods</h3><div id="paymentSummary"></div></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div class="card"><h3>Best Sellers</h3><div id="bestSellers"></div></div>
+<div class="card"><h3>Low Stock Products</h3><div id="lowProducts"></div></div>
+</div>
+
+<div class="grid" style="grid-template-columns:2fr 1fr">
+<div class="card"><h3>Recent Sales</h3><div id="recentSales" class="tablewrap"></div></div>
+<div class="card"><h3>Quick Actions</h3><button class="btn" style="width:100%;margin:5px 0" onclick="showById('products')">Manage Products</button><button class="btn2" style="width:100%;margin:5px 0" onclick="openSale()">Record Sale</button><button class="ghost" style="width:100%;margin:5px 0" onclick="showById('reports')">Monthly Report</button></div>
+</div>
+</section>
+
+
+<section id="pos" class="view">
+<div class="row between"><div><h2>Point of Sale (POS)</h2><div class="muted">Create a sale quickly from the checkout screen</div></div><button class="ghost" onclick="clearCart()">Clear Cart</button></div>
+<div class="grid" style="grid-template-columns:1.7fr 1fr;margin-top:18px">
+  <div class="card">
+    <label>Barcode Scanner / Product Search</label>
+    <div class="row" style="gap:8px;align-items:stretch">
+      <input id="posSearch" style="flex:1" placeholder="Scan barcode or type product name / SKU..." autocomplete="off" oninput="renderPOSProducts()" onkeydown="handleBarcodeScan(event)">
+      <button class="btn" type="button" onclick="openCameraScanner()">📷 Scan with Camera</button>
+    </div>
+    <div class="muted" style="margin-top:7px">💡 USB/Bluetooth scanner is still supported. On phone, tap <b>Scan with Camera</b> and point the camera at the barcode.</div>
+    <div id="posProducts" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:15px"></div>
+  </div>
+  <div class="card">
+    <h3>Current Cart</h3>
+    <div id="cartList"></div>
+    <div class="line"></div>
+    <div class="row between"><span>Subtotal</span><b id="cartSubtotal">₱0.00</b></div>
+    <label>Discount</label><input id="posDiscount" type="number" min="0" step="0.01" value="0" oninput="renderCart()">
+    <div class="row between"><span>Total</span><b id="cartTotal" style="font-size:24px">₱0.00</b></div>
+    <label>Customer</label><input id="posCustomer" placeholder="Walk-in Customer">
+    <label>Payment Method</label><select id="posPayment" onchange="renderPaymentFields()"><option>Cash</option><option>GCash</option><option>Card</option><option>Bank Transfer</option></select>
+    <div id="cashBox"><label>Cash Received</label><input id="cashReceived" type="number" min="0" step="0.01" value="0" oninput="renderChange()"><div class="row between" style="margin-top:8px"><span>Change</span><b id="cashChange">₱0.00</b></div></div>
+    <button class="btn" style="width:100%;margin-top:15px" onclick="checkoutPOS()">Complete Sale</button>
+  </div>
+</div>
+</section>
+
+<section id="products" class="view">
+<div class="row between"><div><h2>Products & Inventory</h2><div class="muted">Track stock and product pricing</div></div><button class="btn" onclick="productModal()">+ Add Product</button></div>
+<div class="card" style="margin-top:18px"><div id="productsTable" class="tablewrap"></div></div>
+</section>
+
+
+<section id="inventory" class="view">
+<div class="row between"><div><h2>Inventory Management</h2><div class="muted">Stock-in, stock-out and inventory history</div></div><button class="btn" onclick="stockModal()">+ Stock Adjustment</button></div>
+<div class="card" style="margin-top:18px"><div id="inventoryTable" class="tablewrap"></div></div>
+<div class="card" style="margin-top:18px"><h3>Stock Movement History</h3><div id="stockHistory" class="tablewrap"></div></div>
+</section>
+
+<section id="sales" class="view">
+<div class="row between"><div><h2>Sales</h2><div class="muted">Record sales and print receipts</div></div><button class="btn" onclick="openSale()">+ New Sale</button></div>
+<div class="card" style="margin-top:18px"><div id="salesTable" class="tablewrap"></div></div>
+</section>
+
+
+<section id="expenses" class="view">
+<div class="row between"><div><h2>Expenses</h2><div class="muted">Track operating expenses for a clearer net profit</div></div><button class="btn" onclick="expenseModal()">+ Add Expense</button></div>
+<div class="grid stats">
+<div class="card"><div class="muted">This Month Expenses</div><div class="statnum" id="monthExpenses">₱0</div></div>
+<div class="card"><div class="muted">This Month Net Profit</div><div class="statnum" id="monthNet">₱0</div></div>
+</div>
+<div class="card"><div id="expensesTable" class="tablewrap"></div></div>
+</section>
+
+<section id="customers" class="view">
+<h2>Customers</h2><div class="muted">Customer purchase summary</div>
+<div class="card" style="margin-top:18px"><div id="customersTable" class="tablewrap"></div></div>
+</section>
+
+<section id="reports" class="view">
+<div class="row between"><div><h2>Monthly Sales Report</h2><div class="muted">Choose a month to review sales and profit</div></div><input id="reportMonth" type="month" style="width:auto" onchange="renderReport()"></div>
+<div id="reportBox" class="card" style="margin-top:18px"></div>
+</section>
+
+<section id="settings" class="view">
+<h2>Settings</h2><div class="muted">Customize your store</div>
+<div class="card" style="margin-top:18px;max-width:700px">
+<label>Business / Store Name</label><input id="setName">
+<label>Currency</label><select id="setCurrency"><option>₱</option><option>$</option><option>€</option><option>£</option></select>
+<label>Logo</label><input id="setLogo" type="file" accept="image/*"><img id="logoPreview" class="logo-preview" style="display:none;margin-top:10px">
+<div class="row" style="margin-top:18px"><button class="btn" onclick="saveSettings()">Save Settings</button><button class="ghost" onclick="restoreDemo()">Load Demo Data</button><button class="danger" onclick="resetAll()">Reset All Data</button></div>
+<hr class="line">
+<h3>👤 User Management</h3>
+<p class="muted">Admin can add or remove POS users. Cashiers can use sales functions but cannot manage users.</p>
+<div id="usersTable" class="tablewrap"></div>
+<button class="btn" onclick="userModal()">+ Add User</button>
+<hr class="line">
+<h3>Backup & Restore</h3><p class="muted">Export your data before changing devices or browsers.</p><button class="btn2" onclick="backup()">Download Backup</button> <label style="display:inline-block"><input type="file" id="restoreFile" accept=".json" onchange="restore(event)" style="display:none"><button class="ghost" onclick="document.getElementById('restoreFile').click()">Restore JSON</button></label>
+</div>
+</section>
+
+<section id="printView" class="view printable"><div id="invoiceArea" class="invoice"></div></section>
+</main></div>
+</section>
+
+<div id="modal" class="modal"><div class="modalbox" id="modalBox"></div></div>
+<div id="cameraModal" class="modal">
+  <div class="modalbox" style="max-width:520px">
+    <div class="row between"><div><h2 style="margin:0">📷 Barcode Camera Scanner</h2><div class="muted">Point the camera at a product barcode.</div></div><button class="ghost" onclick="closeCameraScanner()">✕</button></div>
+    <div style="margin-top:15px;position:relative;background:#111;border-radius:14px;overflow:hidden;aspect-ratio:4/3">
+      <video id="scannerVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+      <div style="position:absolute;left:10%;right:10%;top:35%;height:30%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 999px #0003"></div>
+    </div>
+    <div id="scannerStatus" class="muted" style="margin-top:12px;text-align:center">Starting camera…</div>
+    <input id="barcodePhotoInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="scanBarcodePhoto(event)">
+    <button class="btn2" style="width:100%;margin-top:10px" onclick="document.getElementById('barcodePhotoInput').click()">📷 Take Photo to Scan Barcode</button>
+    <div class="muted" style="font-size:12px;text-align:center;margin-top:6px">If live camera is blocked, use the camera photo scanner above.</div>
+    <button class="ghost" style="width:100%;margin-top:10px" onclick="closeCameraScanner()">Close Scanner</button>
+  </div>
+</div>
+
+
+<script>
+const DB_NAME='SmallBusinessPOSPro';
+const DB_VERSION=1;
+const STORE='appState';
+let db={settings:{name:'My Small Business',currency:'₱',logo:''},products:[],sales:[],expenses:[],stockMoves:[],users:[]};
+let dbReady=false;
+let currentUser=null;
+const DEFAULT_ADMIN_HASH='240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+
+// GitHub Local mode — no cloud connection required
+function setAuthStatus(msg,ok=false){const el=document.getElementById('authStatus');if(el){el.textContent=msg;el.className=ok?'ok':'muted';}}
+function uuid(){return crypto.randomUUID();}
+async function hashPassword(pass){const data=new TextEncoder().encode(pass);const hash=await crypto.subtle.digest('SHA-256',data);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+function normalizeDB(){db.expenses=db.expenses||[]; db.stockMoves=db.stockMoves||[]; db.products=db.products||[]; db.products.forEach(x=>{x.barcode=x.barcode||x.sku||''}); db.sales=db.sales||[]; db.settings=db.settings||{name:'My Small Business',currency:'₱',logo:''}; db.users=db.users||[]; if(!db.users.some(u=>u.username==='admin')) db.users.unshift({id:'default-admin',username:'admin',name:'Administrator',role:'admin',passwordHash:DEFAULT_ADMIN_HASH,active:true});}
+function idbOpen(){return new Promise((resolve,reject)=>{try{if(!window.indexedDB)return reject(new Error('IndexedDB unavailable'));const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE)};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('IndexedDB open failed'));}catch(e){reject(e)}});}
+function localFallbackGet(){try{const raw=localStorage.getItem(DB_NAME+'_db');return raw?JSON.parse(raw):null}catch(e){console.error('Local fallback read failed',e);return null}}
+function localFallbackSet(){try{localStorage.setItem(DB_NAME+'_db',JSON.stringify(db));return true}catch(e){console.error('Local fallback save failed',e);return false}}
+function cookieFallbackGet(){try{const n=DB_NAME+'_c',count=parseInt(getCookie(n+'_count')||'0',10);if(!count)return null;let raw='';for(let i=0;i<count;i++)raw+=decodeURIComponent(getCookie(n+'_'+i)||'');return raw?JSON.parse(raw):null}catch(e){console.error('Cookie fallback read failed',e);return null}}
+function cookieFallbackSet(){try{let copy=JSON.parse(JSON.stringify(db));if(copy.settings&&copy.settings.logo&&copy.settings.logo.length>12000)copy.settings.logo='';const raw=JSON.stringify(copy),max=3000,n=Math.ceil(raw.length/max);for(let i=0;i<Math.max(n,1);i++)document.cookie=DB_NAME+'_c_'+i+'='+encodeURIComponent(raw.slice(i*max,(i+1)*max))+'; path=/; max-age=31536000; SameSite=Lax';document.cookie=DB_NAME+'_c_count='+n+'; path=/; max-age=31536000; SameSite=Lax';return cookieFallbackGet()!==null}catch(e){console.error('Cookie fallback save failed',e);return false}}
+function getCookie(name){const m=document.cookie.split('; ').find(x=>x.startsWith(name+'='));return m?m.slice(name.length+1):''}
+async function saveLocalOnly(){normalizeDB();try{const d=await idbOpen();await new Promise((resolve,reject)=>{const tx=d.transaction(STORE,'readwrite');const req=tx.objectStore(STORE).put(db,'db');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error||req.error||new Error('IndexedDB transaction aborted'));tx.onerror=()=>reject(tx.error||req.error||new Error('IndexedDB transaction failed'));});dbReady=true;return 'indexeddb';}catch(e){console.error('IndexedDB save failed, using localStorage fallback',e);if(localFallbackSet()){dbReady=true;return 'localStorage';}if(cookieFallbackSet()){dbReady=true;return 'cookie';}throw e;}}
+async function loadDatabase(){try{const d=await idbOpen();const tx=d.transaction(STORE,'readonly'),s=tx.objectStore(STORE);const r=s.get('db');await new Promise((resolve,reject)=>{r.onsuccess=()=>{if(r.result)db=r.result;normalizeDB();dbReady=true;resolve()};r.onerror=()=>reject(r.error||new Error('IndexedDB read failed'));});const fallback=localFallbackGet()||cookieFallbackGet();if(!r.result&&fallback){db=fallback;normalizeDB();try{await saveLocalOnly();}catch(e){console.error(e)}}renderAll();return true}catch(e){console.error('IndexedDB unavailable, using fallbacks',e);const fallback=localFallbackGet()||cookieFallbackGet();if(fallback)db=fallback;normalizeDB();dbReady=true;renderAll();return true}}
+async function save(){try{const mode=await saveLocalOnly();renderAll();setAuthStatus(mode==='indexeddb'?'Saved on this device ✓':mode==='cookie'?'Saved using browser cookie backup ✓':'Saved on this device (fallback) ✓',true);}catch(e){console.error(e);renderAll();setAuthStatus('Changes are active for this session; use Backup to protect your data.',false);}}
+async function login(){const user=document.getElementById('loginUser').value.trim().toLowerCase(),pass=document.getElementById('loginPass').value;if(!dbReady)await loadDatabase();const hash=await hashPassword(pass);const found=db.users.find(u=>u.username.toLowerCase()===user&&u.passwordHash===hash&&u.active!==false);if(found){currentUser={id:found.id,username:found.username,name:found.name,role:found.role};sessionStorage.setItem('sbiLogin',JSON.stringify(currentUser));openApp();}else{setAuthStatus('Invalid username or password, or user is inactive.');}}
+async function openApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';setAuthStatus('Local mode active ✓',true);if(!dbReady)await loadDatabase();else renderAll();applyRoleUI();}
+function logout(){sessionStorage.removeItem('sbiLogin');location.reload()}
+function applyRoleUI(){const isAdmin=currentUser&&currentUser.role==='admin';document.querySelectorAll('.nav').forEach(btn=>{if(btn.textContent.includes('Settings'))btn.style.display=isAdmin?'':'none'});const userBadge=document.getElementById('currentUserBadge');if(userBadge)userBadge.textContent=currentUser?`${currentUser.name||currentUser.username} • ${currentUser.role}`:'';}
+function requireAdmin(){if(!currentUser||currentUser.role!=='admin'){alert('Admin access required.');return false;}return true;}
+try{const saved=sessionStorage.getItem('sbiLogin');if(saved)currentUser=JSON.parse(saved);}catch(e){currentUser=null;}
+if(currentUser)openApp();
+
+function show(id,btn){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');}
+function showById(id){show(id);document.querySelectorAll('.nav').forEach(x=>{if(x.textContent.toLowerCase().includes(id))x.classList.add('active')})}
+function openModal(html){document.getElementById('modalBox').innerHTML=html;document.getElementById('modal').classList.add('open')}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+
+async function userModal(id=null){
+ if(!requireAdmin())return;
+ const u=id?db.users.find(x=>x.id===id):{username:'',name:'',role:'cashier',active:true};
+ openModal(`<h2>${id?'Edit':'Add'} User</h2><label>Username</label><input id="uUsername" value="${esc(u.username)}" ${id?'readonly':''} autocomplete="off"><label>Display Name</label><input id="uName" value="${esc(u.name||'')}"><label>Role</label><select id="uRole"><option value="cashier" ${u.role==='cashier'?'selected':''}>Cashier</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select><label>${id?'New Password (leave blank to keep current)':'Password'}</label><input id="uPassword" type="password" autocomplete="new-password"><label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input id="uActive" type="checkbox" ${u.active!==false?'checked':''} style="width:auto"> Active user</label><div class="row" style="margin-top:18px"><button class="btn" onclick="saveUser('${id||''}')">Save User</button><button class="ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveUser(id){
+ if(!requireAdmin())return;
+ const username=uUsername.value.trim().toLowerCase(),name=uName.value.trim()||username,role=uRole.value,pass=uPassword.value,active=uActive.checked;
+ if(!/^[a-z0-9._-]{3,30}$/.test(username))return alert('Username must be 3-30 characters using letters, numbers, dot, dash or underscore.');
+ if(!id && pass.length<4)return alert('Password must be at least 4 characters.');
+ const existing=db.users.find(x=>x.username.toLowerCase()===username&&x.id!==id);if(existing)return alert('Username already exists.');
+ if(id){const u=db.users.find(x=>x.id===id);if(!u)return;u.name=name;u.role=role;u.active=active;if(pass)u.passwordHash=await hashPassword(pass);if(u.id===currentUser.id){currentUser.name=name;currentUser.role=role;sessionStorage.setItem('sbiLogin',JSON.stringify(currentUser));}}
+ else db.users.push({id:uuid(),username,name,role,active,passwordHash:await hashPassword(pass)});
+ closeModal();await save();renderUsers();applyRoleUI();
+}
+async function toggleUser(id){if(!requireAdmin())return;const u=db.users.find(x=>x.id===id);if(!u)return;if(u.id===currentUser.id)return alert('You cannot deactivate your own account.');if(u.active!==false&&u.role==='admin'&&db.users.filter(x=>x.role==='admin'&&x.active!==false).length<=1)return alert('Keep at least one active admin account.');u.active=u.active===false;await save();renderUsers();}
+async function deleteUser(id){if(!requireAdmin())return;const u=db.users.find(x=>x.id===id);if(!u)return;if(u.id===currentUser.id)return alert('You cannot delete your own account.');if(u.username==='admin')return alert('The default admin account cannot be deleted.');if(confirm(`Delete user ${u.username}?`)){db.users=db.users.filter(x=>x.id!==id);await save();renderUsers();}}
+function renderUsers(){const el=document.getElementById('usersTable');if(!el)return;if(!currentUser||currentUser.role!=='admin'){el.innerHTML='<div class="muted">Admin access required.</div>';return;}el.innerHTML=db.users.map(u=>`<table class="table"><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr><tr><td>${esc(u.username)}</td><td>${esc(u.name||'')}</td><td>${esc(u.role)}</td><td>${u.active===false?'Inactive':'Active'}</td><td><button class="ghost" onclick="userModal('${u.id}')">Edit</button> <button class="ghost" onclick="toggleUser('${u.id}')">${u.active===false?'Activate':'Deactivate'}</button> ${u.username==='admin'?'':`<button class="danger" onclick="deleteUser('${u.id}')">Delete</button>`}</td></tr></table>`).join('')||'<div class="muted">No users yet.</div>';}
+
+function productModal(id=null){
+ let p=id?db.products.find(x=>x.id===id):{name:'',sku:'',barcode:'',cost:0,price:0,stock:0,min:5};
+ p.barcode=p.barcode||p.sku||'';
+ openModal(`<h2>${id?'Edit':'Add'} Product</h2><label>Product Name</label><input id="pname" value="${esc(p.name)}"><label>SKU</label><input id="psku" value="${esc(p.sku)}"><label>Barcode</label><div class="row"><input id="pbarcode" value="${esc(p.barcode)}" placeholder="e.g. 4801234567890" style="flex:1"><button type="button" class="btn2" onclick="openCameraScanner('product')">📷 Scan Barcode</button></div><div class="muted" style="font-size:12px;margin-top:5px">Scan the product barcode using your phone camera.</div><label>Cost</label><input id="pcost" type="number" step="0.01" value="${p.cost}"><label>Selling Price</label><input id="pprice" type="number" step="0.01" value="${p.price}"><label>Stock</label><input id="pstock" type="number" value="${p.stock}"><label>Low Stock Alert At</label><input id="pmin" type="number" value="${p.min}"><div class="row" style="margin-top:18px"><button class="btn" onclick="saveProduct('${id||''}')">Save</button><button class="ghost" onclick="closeModal()">Cancel</button></div>`)
+}
+function saveProduct(id){let o={name:pname.value.trim(),sku:psku.value.trim(),barcode:pbarcode.value.trim(),cost:+pcost.value||0,price:+pprice.value||0,stock:+pstock.value||0,min:+pmin.value||0};if(!o.name)return alert('Enter product name');if(id)Object.assign(db.products.find(x=>x.id===id),o);else db.products.push({...o,id:crypto.randomUUID()});closeModal();save()}
+function delProduct(id){if(confirm('Delete this product?')){db.products=db.products.filter(x=>x.id!==id);save()}}
+function openSale(){
+ if(!db.products.length)return alert('Add a product first.');
+ let opts=db.products.map(p=>`<option value="${p.id}">${esc(p.name)} — ${money(p.price)} (Stock: ${p.stock})</option>`).join('');
+ openModal(`<h2>New Sale</h2><label>Customer</label><input id="sCustomer" placeholder="Walk-in Customer"><label>Product</label><select id="sProduct">${opts}</select><label>Quantity</label><input id="sQty" type="number" min="1" value="1"><label>Payment Method</label><select id="sPay"><option>Cash</option><option>GCash</option><option>Bank Transfer</option><option>Card</option></select><div class="row" style="margin-top:18px"><button class="btn" onclick="saveSale()">Record Sale</button><button class="ghost" onclick="closeModal()">Cancel</button></div>`)
+}
+function saveSale(){let p=db.products.find(x=>x.id===sProduct.value),q=+sQty.value||0;if(!p||q<1)return alert('Invalid sale');if(q>p.stock)return alert('Not enough stock.');let sale={id:crypto.randomUUID(),date:new Date().toISOString(),customer:sCustomer.value.trim()||'Walk-in Customer',productId:p.id,product:p.name,qty:q,price:p.price,cost:p.cost,total:q*p.price,profit:q*(p.price-p.cost),payment:sPay.value};p.stock-=q;db.sales.push(sale);closeModal();save();printSale(sale.id)}
+function printSale(id){let s=db.sales.find(x=>x.id===id);document.getElementById('invoiceArea').innerHTML=`<div class="invoice-head"><div><h1>${esc(db.settings.name)}</h1><div class="muted">Sales Receipt</div></div><div>${new Date(s.date).toLocaleString()}</div></div><div class="line"></div><p><b>Customer:</b> ${esc(s.customer)}</p><p><b>Payment:</b> ${esc(s.payment)}</p><table class="table"><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr><tr><td>${esc(s.product)}</td><td>${s.qty}</td><td>${money(s.price)}</td><td>${money(s.total)}</td></tr></table><h2 style="text-align:right;margin-top:25px">TOTAL: ${money(s.total)}</h2><div class="no-print" style="margin-top:25px"><button class="btn" onclick="window.print()">Print Receipt</button> <button class="ghost" onclick="showById('sales')">Back</button></div>`;show('printView');setTimeout(()=>window.print(),250)}
+function delSale(id){if(!confirm('Delete this sale? Stock will be returned.'))return;let s=db.sales.find(x=>x.id===id),p=db.products.find(x=>x.id===s.productId);if(p)p.stock+=s.qty;db.sales=db.sales.filter(x=>x.id!==id);save()}
+
+
+let cart = [];
+
+function renderPOSProducts(){
+  const q=(document.getElementById('posSearch')?.value||'').toLowerCase();
+  const list=db.products.filter(p=>!q || p.name.toLowerCase().includes(q) || String(p.sku||'').toLowerCase().includes(q) || String(p.barcode||p.sku||'').toLowerCase().includes(q));
+  const el=document.getElementById('posProducts');
+  if(!el)return;
+  el.innerHTML=list.map(p=>`<button class="ghost" style="text-align:left;padding:15px" onclick="addToCart('${p.id}')" ${p.stock<1?'disabled':''}>
+    <b>${esc(p.name)}</b><br><span class="muted">${esc(p.sku||'')}</span><br><strong>${money(p.price)}</strong><br><small>Stock: ${p.stock}</small>
+  </button>`).join('') || '<p class="muted">No matching products.</p>';
+}
+let scannerStream=null, scannerTimer=null, scannerBusy=false, scannerTarget='pos';
+let scannerDetector=null, scannerCanvas=null, scannerCtx=null;
+async function openCameraScanner(target='pos'){
+  scannerTarget=target;
+  const modal=document.getElementById('cameraModal'); modal.classList.add('open');
+  const status=document.getElementById('scannerStatus'); status.textContent='Starting camera…';
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    status.textContent='Live camera is unavailable on this page. Use “Take Photo to Scan Barcode”.';
+    return;
+  }
+  try{
+    if('BarcodeDetector' in window){
+      try{scannerDetector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','code_93','itf','qr_code']});}catch(e){scannerDetector=null;}
+    }
+    scannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    const video=document.getElementById('scannerVideo'); video.srcObject=scannerStream; await video.play();
+    status.textContent='🔎 Automatic scanning… center the barcode inside the box.';
+    scannerBusy=false;
+    scannerCanvas=document.createElement('canvas'); scannerCtx=scannerCanvas.getContext('2d',{willReadFrequently:true});
+    scanCameraFrame();
+  }catch(e){
+    status.textContent='Live camera could not start. Use “Take Photo to Scan Barcode”. If your browser blocks camera on a downloaded HTML file, open it from HTTPS and allow Camera permission.';
+  }
+}
+async function scanCameraFrame(){
+  if(!document.getElementById('cameraModal').classList.contains('open'))return;
+  const video=document.getElementById('scannerVideo');
+  if(video && video.readyState>=2 && !scannerBusy){
+    scannerBusy=true;
+    try{
+      let value='';
+      // Preferred: browser-native continuous barcode detection.
+      if(scannerDetector){
+        try{
+          const codes=await scannerDetector.detect(video);
+          if(codes && codes.length && codes[0].rawValue) value=String(codes[0].rawValue).trim();
+        }catch(e){}
+      }
+      // Fallback: decode common EAN-13/UPC-A directly from the live camera frame.
+      if(!value) value=decodeRetailBarcodeFrame(video);
+      if(value){
+        scannerBusy=false;
+        handleScannedBarcode(value);
+        setTimeout(closeCameraScanner,350);
+        return;
+      }
+    }catch(e){}
+    scannerBusy=false;
+  }
+  scannerTimer=setTimeout(scanCameraFrame,280);
+}
+function decodeRetailBarcodeFrame(video){
+  if(!scannerCtx || !video.videoWidth || !video.videoHeight)return '';
+  // Analyze the central 70% of the frame where the white scan box sits.
+  const vw=video.videoWidth, vh=video.videoHeight;
+  const cropW=Math.floor(vw*0.78), cropH=Math.floor(vh*0.34);
+  const sx=Math.floor((vw-cropW)/2), sy=Math.floor((vh-cropH)/2);
+  const maxW=900, scale=Math.min(1,maxW/cropW);
+  const w=Math.max(1,Math.floor(cropW*scale)), h=Math.max(1,Math.floor(cropH*scale));
+  scannerCanvas.width=w; scannerCanvas.height=h;
+  scannerCtx.drawImage(video,sx,sy,cropW,cropH,0,0,w,h);
+  const center=Math.floor(h/2), span=Math.max(10,Math.floor(h*0.65));
+  for(let i=0;i<13;i++){
+    const y=Math.max(0,Math.min(h-1,center-Math.floor(span/2)+Math.floor(span*i/12)));
+    const line=scannerCtx.getImageData(0,y,w,1).data;
+    for(const threshold of [90,130,170,210]){
+      const bits=new Uint8Array(w);
+      for(let x=0;x<w;x++){
+        const j=x*4; const g=(line[j]*299+line[j+1]*587+line[j+2]*114)/1000;
+        bits[x]=g<threshold?1:0;
+      }
+      const hit=decodeEANFromBits(bits);
+      if(hit)return hit;
+    }
+  }
+  return '';
+}
+async function scanBarcodePhoto(event){
+  const file=event.target.files && event.target.files[0];
+  if(!file)return;
+  const status=document.getElementById('scannerStatus');
+  status.textContent='Reading barcode from photo…';
+  try{
+    let value='';
+    // First try the browser's native barcode detector when available.
+    if('BarcodeDetector' in window){
+      try{
+        const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','code_93','itf','qr_code']});
+        const bitmap=await createImageBitmap(file);
+        const codes=await detector.detect(bitmap);
+        bitmap.close();
+        if(codes.length && codes[0].rawValue) value=String(codes[0].rawValue).trim();
+      }catch(e){}
+    }
+    // Fallback for phones/browsers without BarcodeDetector: decode common retail EAN/UPC
+    // directly from the captured photo. This keeps the downloaded HTML self-contained.
+    if(!value) value=await decodeRetailBarcodeImage(file);
+    if(value){
+      status.textContent='Barcode found: '+value;
+      handleScannedBarcode(value);
+      setTimeout(closeCameraScanner,500);
+    }else{
+      status.textContent='Hindi mabasa ang barcode. Ilapit, liwanagan, at kunan ulit nang tuwid ang buong barcode.';
+    }
+  }catch(e){
+    status.textContent='Hindi mabasa ang barcode. Subukan ang malinaw na close-up photo ng barcode.';
+  }finally{
+    event.target.value='';
+  }
+}
+
+// Lightweight EAN-13 / UPC-A decoder for captured phone photos.
+// Most retail products use EAN-13; UPC-A is converted to EAN-13 with a leading 0.
+async function decodeRetailBarcodeImage(file){
+  const img=await loadImageFromFile(file);
+  const maxW=1800, scale=Math.min(1,maxW/img.naturalWidth);
+  const w=Math.max(1,Math.round(img.naturalWidth*scale)), h=Math.max(1,Math.round(img.naturalHeight*scale));
+  const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+  const ctx=canvas.getContext('2d',{willReadFrequently:true}); ctx.drawImage(img,0,0,w,h);
+  const y0=Math.floor(h*0.18), y1=Math.ceil(h*0.82);
+  // Barcode is usually horizontal. Try several rows around the image center.
+  const rows=[];
+  const center=Math.floor(h/2), span=Math.max(20,Math.floor(h*0.28));
+  for(let i=0;i<21;i++) rows.push(Math.max(y0,Math.min(y1,center-Math.floor(span/2)+Math.floor(span*i/20))));
+  for(const y of rows){
+    const line=ctx.getImageData(0,y,w,1).data;
+    for(const threshold of [70,100,130,160,190,220]){
+      const bits=new Uint8Array(w);
+      for(let x=0;x<w;x++){
+        const i=x*4; const g=(line[i]*299+line[i+1]*587+line[i+2]*114)/1000;
+        bits[x]=g<threshold?1:0;
+      }
+      const hit=decodeEANFromBits(bits);
+      if(hit)return hit;
+    }
+  }
+  return '';
+}
+function loadImageFromFile(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image load failed'))};
+    img.src=url;
+  });
+}
+const EAN_L={
+  '0001101':'0','0011001':'1','0010011':'2','0111101':'3','0100011':'4','0110001':'5','0101111':'6','0111011':'7','0110111':'8','0001011':'9'
+};
+const EAN_G={
+  '0100111':'0','0110011':'1','0011011':'2','0100001':'3','0011101':'4','0111001':'5','0000101':'6','0010001':'7','0001001':'8','0010111':'9'
+};
+const EAN_R={
+  '1110010':'0','1100110':'1','1101100':'2','1000010':'3','1011100':'4','1001110':'5','1010000':'6','1000100':'7','1001000':'8','1110100':'9'
+};
+const EAN_PARITY={
+  '0':'LLLLLL','1':'LLGLGG','2':'LLGGLG','3':'LLGGGL','4':'LGLLGG','5':'LGGLLG','6':'LGGGLL','7':'LGLGLG','8':'LGLGGL','9':'LGGLGL'
+};
+function decodeEANFromBits(bits){
+  // Trim noise and look for the 101 start guard. For each possible guard, try
+  // several module widths derived from the following quiet zone/bar geometry.
+  const n=bits.length;
+  for(let s=2;s<n-4;s++){
+    if(!(bits[s]===1&&bits[s+1]===0&&bits[s+2]===1))continue;
+    // Quiet zone before start guard should contain mostly white pixels.
+    let quiet=0; for(let x=Math.max(0,s-25);x<s;x++) if(bits[x]===0)quiet++;
+    if(quiet<Math.min(10,s))continue;
+    for(const w of [1,1.25,1.5,1.75,2,2.25,2.5,2.75,3,3.5,4,4.5,5,6,7,8,9,10,12,14]){
+      const code=sampleEANModules(bits,s,w); if(code)return code;
+    }
+    // Estimate module width from the next ~95 modules by testing plausible widths.
+    const end=Math.min(n-3,s+95*20);
+    const approx=(end-s)/95;
+    for(let k=-4;k<=4;k++){
+      const w=approx*(1+k*0.035); if(w>0.7&&w<20){const code=sampleEANModules(bits,s,w);if(code)return code;}
+    }
+  }
+  return '';
+}
+function sampleEANModules(bits,start,mw){
+  if(start+95*mw>=bits.length)return '';
+  let b='';
+  for(let i=0;i<95;i++){
+    const x=Math.min(bits.length-1,Math.max(0,Math.floor(start+(i+0.5)*mw)));
+    b+=bits[x]?'1':'0';
+  }
+  if(b.slice(0,3)!=='101'||b.slice(45,50)!=='01010'||b.slice(92,95)!=='101')return '';
+  const left=b.slice(3,45), right=b.slice(50,92);
+  let first='', digits='';
+  for(let i=0;i<6;i++){
+    const p=left.slice(i*7,i*7+7);
+    if(EAN_L[p]){digits+=EAN_L[p];} else if(EAN_G[p]){digits+=EAN_G[p];} else return '';
+  }
+  // First digit is encoded by the L/G parity pattern of the six left digits.
+  const parity=left.match(/.{7}/g)?.map(p=>EAN_L[p]?'L':EAN_G[p]?'G':'?').join('')||'';
+  for(const d of Object.keys(EAN_PARITY)) if(EAN_PARITY[d]===parity) {first=d;break;}
+  if(!first)return '';
+  let rightDigits='';
+  for(let i=0;i<6;i++){
+    const p=right.slice(i*7,i*7+7); if(!EAN_R[p])return ''; rightDigits+=EAN_R[p];
+  }
+  const raw=first+digits+rightDigits;
+  if(!/^\d{13}$/.test(raw))return '';
+  let sum=0; for(let i=0;i<12;i++) sum+=Number(raw[i])*(i%2?3:1);
+  const check=(10-(sum%10))%10;
+  return check===Number(raw[12])?raw:'';
+}
+
+function handleScannedBarcode(raw){
+  const value=String(raw||'').trim(); if(!value)return;
+  if(scannerTarget==='product'){
+    const field=document.getElementById('pbarcode');
+    if(field){field.value=value; field.focus();}
+    const status=document.getElementById('scannerStatus');
+    if(status)status.textContent='Barcode captured: '+value;
+    return;
+  }
+  handleBarcodeValue(value);
+}
+function handleBarcodeValue(raw){
+  const q=String(raw||'').trim().toLowerCase(); if(!q)return;
+  const p=db.products.find(x=>String(x.barcode||'').toLowerCase()===q || String(x.sku||'').toLowerCase()===q);
+  if(!p){alert('Barcode not found. Add this barcode to the product first.');return;}
+  if(p.stock<1){alert('Out of stock: '+p.name);return;}
+  addToCart(p.id); document.getElementById('posSearch').value=''; renderPOSProducts(); renderCart();
+}
+function closeCameraScanner(){
+  if(scannerTimer){clearTimeout(scannerTimer);scannerTimer=null;}
+  if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}
+  const video=document.getElementById('scannerVideo'); if(video)video.srcObject=null;
+  scannerBusy=false; scannerDetector=null; scannerCanvas=null; scannerCtx=null; scannerTarget='pos'; const modal=document.getElementById('cameraModal'); if(modal)modal.classList.remove('open');
+}
+function handleBarcodeScan(event){
+  if(event.key!=='Enter')return;
+  event.preventDefault();
+  const raw=(event.target.value||'').trim().toLowerCase();
+  if(!raw)return;
+  const p=db.products.find(x=>String(x.barcode||'').toLowerCase()===raw || String(x.sku||'').toLowerCase()===raw);
+  if(!p){alert('Barcode not found. Add this barcode to the product first.');return;}
+  if(p.stock<1){alert('Out of stock: '+p.name);return;}
+  addToCart(p.id);
+  event.target.value='';
+  renderPOSProducts();
+  event.target.focus();
+}
+function addToCart(id){
+  const p=db.products.find(x=>x.id===id); if(!p || p.stock<1)return;
+  const item=cart.find(x=>x.productId===id);
+  if(item){if(item.qty<p.stock)item.qty++;else alert('Maximum available stock reached.')}
+  else cart.push({productId:id,qty:1});
+  renderCart();
+}
+function changeCartQty(id,delta){
+  const item=cart.find(x=>x.productId===id); const p=db.products.find(x=>x.id===id);
+  if(!item||!p)return;
+  item.qty+=delta;
+  if(item.qty<=0)cart=cart.filter(x=>x.productId!==id);
+  if(item.qty>p.stock)item.qty=p.stock;
+  renderCart();
+}
+function clearCart(){cart=[];renderCart()}
+function cartSubtotalValue(){return cart.reduce((sum,i)=>{const p=db.products.find(x=>x.id===i.productId);return sum+(p?p.price*i.qty:0)},0)}
+function renderCart(){
+  const list=document.getElementById('cartList'); if(!list)return;
+  list.innerHTML=cart.length?cart.map(i=>{const p=db.products.find(x=>x.id===i.productId);return `<div class="row between" style="padding:9px 0;border-bottom:1px solid var(--border)">
+    <div><b>${esc(p.name)}</b><br><span class="muted">${money(p.price)} × ${i.qty}</span></div>
+    <div class="row"><button class="btn2" onclick="changeCartQty('${p.id}',-1)">−</button><button class="btn2" onclick="changeCartQty('${p.id}',1)">+</button></div>
+  </div>`}).join(''):'<p class="muted">Cart is empty.</p>';
+  const sub=cartSubtotalValue(), disc=Math.max(0,+document.getElementById('posDiscount')?.value||0), total=Math.max(0,sub-disc);
+  document.getElementById('cartSubtotal').textContent=money(sub);
+  document.getElementById('cartTotal').textContent=money(total);
+  renderChange();
+}
+function renderPaymentFields(){
+  const cash=document.getElementById('cashBox');
+  if(cash)cash.style.display=document.getElementById('posPayment').value==='Cash'?'block':'none';
+  renderChange();
+}
+function renderChange(){
+  const total=Math.max(0,cartSubtotalValue()-(+document.getElementById('posDiscount')?.value||0));
+  const received=+document.getElementById('cashReceived')?.value||0;
+  const el=document.getElementById('cashChange'); if(el)el.textContent=money(Math.max(0,received-total));
+}
+function checkoutPOS(){
+  if(!cart.length)return alert('Add at least one product to the cart.');
+  const discount=Math.max(0,+document.getElementById('posDiscount').value||0);
+  const subtotal=cartSubtotalValue(), total=Math.max(0,subtotal-discount);
+  const payment=document.getElementById('posPayment').value;
+  const received=payment==='Cash'?(+document.getElementById('cashReceived').value||0):total;
+  if(payment==='Cash' && received<total)return alert('Cash received is less than the total.');
+  for(const i of cart){const p=db.products.find(x=>x.id===i.productId);if(!p||i.qty>p.stock)return alert('Insufficient stock for one of the products.');}
+  const items=cart.map(i=>{const p=db.products.find(x=>x.id===i.productId);return {productId:p.id,product:p.name,qty:i.qty,price:p.price,cost:p.cost,total:i.qty*p.price,profit:i.qty*(p.price-p.cost)}}); 
+  const sale={id:crypto.randomUUID(),date:new Date().toISOString(),customer:document.getElementById('posCustomer').value.trim()||'Walk-in Customer',payment,discount,subtotal,total,received,change:Math.max(0,received-total),items,
+    productId:items[0].productId,product:items.map(x=>x.product).join(', '),qty:items.reduce((a,x)=>a+x.qty,0),price:items.length===1?items[0].price:0,cost:items.reduce((a,x)=>a+x.cost*x.qty,0),profit:items.reduce((a,x)=>a+x.profit,0)};
+  items.forEach(i=>{db.products.find(p=>p.id===i.productId).stock-=i.qty});
+  db.sales.push(sale); cart=[]; save(); printPOSSale(sale.id);
+}
+function printPOSSale(id){
+  const s=db.sales.find(x=>x.id===id);
+  document.getElementById('invoiceArea').innerHTML=`<div class="invoice-head"><div><h1>${esc(db.settings.name)}</h1><div class="muted">POS Receipt</div></div><div>${new Date(s.date).toLocaleString()}</div></div>
+  <div class="line"></div><p><b>Customer:</b> ${esc(s.customer)}</p><p><b>Payment:</b> ${esc(s.payment)}</p>
+  <table class="table"><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr>${s.items.map(i=>`<tr><td>${esc(i.product)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.total)}</td></tr>`).join('')}</table>
+  <div style="margin-top:15px"><div class="row between"><span>Subtotal</span><b>${money(s.subtotal)}</b></div><div class="row between"><span>Discount</span><b>${money(s.discount)}</b></div><div class="row between"><span>Total</span><b>${money(s.total)}</b></div>${s.payment==='Cash'?`<div class="row between"><span>Cash</span><b>${money(s.received)}</b></div><div class="row between"><span>Change</span><b>${money(s.change)}</b></div>`:''}</div>
+  <h2 style="text-align:center;margin-top:25px">Thank you!</h2><div class="no-print" style="margin-top:25px"><button class="btn" onclick="window.print()">Print Receipt</button> <button class="ghost" onclick="showById('pos');renderPOSProducts();renderCart()">Back to POS</button></div>`;
+  show('printView'); setTimeout(()=>window.print(),250);
+}
+
+
+function stockModal(id=''){
+ const p=id?db.products.find(x=>x.id===id):db.products[0];
+ if(!p)return alert('Add a product first.');
+ const opts=db.products.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${esc(x.name)} (Stock: ${x.stock})</option>`).join('');
+ openModal(`<h2>Stock Adjustment</h2><label>Product</label><select id="mProduct">${opts}</select><label>Type</label><select id="mType"><option value="in">Stock In / Restock</option><option value="out">Stock Out</option><option value="set">Set Exact Stock</option></select><label>Quantity</label><input id="mQty" type="number" min="0" value="1"><label>Reason / Note</label><input id="mNote" placeholder="Restock, damaged, correction..."><div class="row" style="margin-top:18px"><button class="btn" onclick="saveStockMove()">Save</button><button class="ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+function saveStockMove(){
+ const p=db.products.find(x=>x.id===mProduct.value),q=Math.max(0,+mQty.value||0),type=mType.value;
+ if(!p)return; const before=p.stock;
+ if(type==='in')p.stock+=q; else if(type==='out'){if(q>p.stock)return alert('Stock out cannot exceed current stock.');p.stock-=q;} else p.stock=q;
+ db.stockMoves.push({id:crypto.randomUUID(),date:new Date().toISOString(),productId:p.id,product:p.name,type,qty:q,before,after:p.stock,note:mNote.value.trim()||''});
+ closeModal();save();
+}
+function renderInventory(){
+ inventoryTable.innerHTML=`<table class="table"><tr><th>Product</th><th>SKU</th><th>Stock</th><th>Low Alert</th><th>Inventory Value</th><th></th></tr>${db.products.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.sku)}</td><td>${p.stock}</td><td>${p.min}</td><td>${money(p.stock*p.cost)}</td><td><button class="btn2" onclick="stockModal('${p.id}')">Adjust</button></td></tr>`).join('')}</table>`;
+ stockHistory.innerHTML=db.stockMoves.length?`<table class="table"><tr><th>Date</th><th>Product</th><th>Type</th><th>Qty</th><th>Before</th><th>After</th><th>Note</th></tr>${db.stockMoves.slice().reverse().slice(0,50).map(x=>`<tr><td>${new Date(x.date).toLocaleString()}</td><td>${esc(x.product)}</td><td>${esc(x.type)}</td><td>${x.qty}</td><td>${x.before}</td><td>${x.after}</td><td>${esc(x.note)}</td></tr>`).join('')}</table>`:'<p class="muted">No stock movements yet.</p>';
+}
+function expenseModal(){
+ openModal(`<h2>Add Expense</h2><label>Date</label><input id="eDate" type="date" value="${new Date().toISOString().slice(0,10)}"><label>Category</label><select id="eCategory"><option>Supplies</option><option>Rent</option><option>Utilities</option><option>Transportation</option><option>Marketing</option><option>Salary</option><option>Other</option></select><label>Description</label><input id="eDesc" placeholder="Expense description"><label>Amount</label><input id="eAmount" type="number" min="0" step="0.01"><div class="row" style="margin-top:18px"><button class="btn" onclick="saveExpense()">Save Expense</button><button class="ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+function saveExpense(){const amount=+eAmount.value||0;if(amount<=0)return alert('Enter a valid amount.');db.expenses.push({id:crypto.randomUUID(),date:eDate.value,category:eCategory.value,description:eDesc.value.trim(),amount});closeModal();save();}
+function delExpense(id){if(confirm('Delete this expense?')){db.expenses=db.expenses.filter(x=>x.id!==id);save()}}
+function renderExpenses(){
+ const ym=new Date().toISOString().slice(0,7), total=db.expenses.filter(x=>x.date.slice(0,7)===ym).reduce((a,x)=>a+x.amount,0), sales=db.sales.filter(x=>x.date.slice(0,7)===ym).reduce((a,x)=>a+x.profit,0);
+ monthExpenses.textContent=money(total); monthNet.textContent=money(sales-total);
+ expensesTable.innerHTML=db.expenses.length?`<table class="table"><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th></th></tr>${db.expenses.slice().reverse().map(x=>`<tr><td>${x.date}</td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td>${money(x.amount)}</td><td><button class="danger" onclick="delExpense('${x.id}')">Delete</button></td></tr>`).join('')}</table>`:'<p class="muted">No expenses recorded.</p>';
+}
+
+function renderAll(){renderPOSProducts();renderCart();renderInventory();renderExpenses();document.getElementById('businessName').textContent=db.settings.name;let tl=document.getElementById('topLogo');tl.src=db.settings.logo;tl.style.display=db.settings.logo?'block':'none';renderDash();renderProducts();renderSales();renderCustomers();renderReport();loadSettings();renderUsers();applyRoleUI()}
+function renderDash(){
+ const sales=db.sales.reduce((a,s)=>a+s.total,0), profit=db.sales.reduce((a,s)=>a+s.profit,0), low=db.products.filter(p=>p.stock<=p.min);
+ const today=new Date().toISOString().slice(0,10);
+ const todaySales=db.sales.filter(s=>s.date.slice(0,10)===today).reduce((a,s)=>a+s.total,0);
+ const todayProfit=db.sales.filter(s=>s.date.slice(0,10)===today).reduce((a,s)=>a+s.profit,0);
+ statSales.textContent=money(sales); statProfit.textContent=money(profit); statProducts.textContent=db.products.length; statLow.textContent=low.length;
+ lowAlert.innerHTML=low.length?`<div class="alert">⚠️ Low stock: ${low.map(p=>esc(p.name)+' ('+p.stock+')').join(', ')}</div>`:'<div class="alert ok">✓ Stock levels look good.</div>';
+ const r=db.sales.slice(-8).reverse();
+ recentSales.innerHTML=r.length?`<table class="table"><tr><th>Date</th><th>Customer</th><th>Item</th><th>Total</th></tr>${r.map(s=>`<tr><td>${new Date(s.date).toLocaleDateString()}</td><td>${esc(s.customer)}</td><td>${esc(s.product)}</td><td>${money(s.total)}</td></tr>`).join('')}</table>`:'<p class="muted">No sales yet.</p>';
+ const byPay={}; db.sales.forEach(s=>byPay[s.payment]=(byPay[s.payment]||0)+s.total);
+ paymentSummary.innerHTML=Object.keys(byPay).length?Object.entries(byPay).sort((a,b)=>b[1]-a[1]).map(x=>`<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>${esc(x[0])}</span><b>${money(x[1])}</b></div>`).join(''):'<p class="muted">No payment data.</p>';
+ const best={}; db.sales.forEach(s=>(s.items||[{product:s.product,qty:s.qty||0}]).forEach(i=>best[i.product]=(best[i.product]||0)+(i.qty||0)));
+ const bestArr=Object.entries(best).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ bestSellers.innerHTML=bestArr.length?bestArr.map((x,i)=>`<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>${i+1}. ${esc(x[0])}</span><b>${x[1]} units</b></div>`).join(''):'<p class="muted">No sales yet.</p>';
+ lowProducts.innerHTML=low.length?low.slice(0,7).map(p=>`<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>${esc(p.name)}</span><b style="color:#dc2626">${p.stock}</b></div>`).join(''):'<p class="muted">No low-stock products.</p>';
+ const ctx=document.getElementById('salesChart');
+ if(ctx){const c=ctx.getContext('2d'),w=ctx.width=ctx.clientWidth*2,h=ctx.height=300;c.clearRect(0,0,w,h);const days=[];for(let i=6;i>=0;i--){let d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}const vals=days.map(d=>db.sales.filter(s=>s.date.slice(0,10)===d).reduce((a,s)=>a+s.total,0));const max=Math.max(...vals,1),pad=35,barW=(w-pad*2)/vals.length*0.55; c.font='22px Arial';c.fillText(`Today: ${money(todaySales)} | Profit: ${money(todayProfit)}`,pad,30); vals.forEach((v,i)=>{const x=pad+i*((w-pad*2)/vals.length)+10,y=h-40-(v/max)*(h-100);c.fillStyle='#2563eb';c.fillRect(x,y,barW,h-40-y);c.fillStyle='#64748b';c.font='18px Arial';c.fillText(days[i].slice(5),x,h-12);});};renderUsers();}
+function renderProducts(){productsTable.innerHTML=`<table class="table"><tr><th>Product</th><th>SKU</th><th>Barcode</th><th>Cost</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr>${db.products.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.sku)}</td><td>${esc(p.barcode||p.sku||'')}</td><td>${money(p.cost)}</td><td>${money(p.price)}</td><td>${p.stock}</td><td>${p.stock<=p.min?'<b style="color:#dc2626">Low Stock</b>':'In Stock'}</td><td><button class="btn2" onclick="productModal('${p.id}')">Edit</button> <button class="danger" onclick="delProduct('${p.id}')">Delete</button></td></tr>`).join('')}</table>`}
+function renderSales(){salesTable.innerHTML=db.sales.length?`<table class="table"><tr><th>Date</th><th>Customer</th><th>Product</th><th>Qty</th><th>Total</th><th>Profit</th><th></th></tr>${db.sales.slice().reverse().map(s=>`<tr><td>${new Date(s.date).toLocaleDateString()}</td><td>${esc(s.customer)}</td><td>${esc(s.product)}</td><td>${s.qty}</td><td>${money(s.total)}</td><td>${money(s.profit)}</td><td><button class="btn2" onclick="printSale('${s.id}')">Receipt</button> <button class="danger" onclick="delSale('${s.id}')">Delete</button></td></tr>`).join('')}</table>`:'<p class="muted">No sales recorded.</p>'}
+function renderCustomers(){let m={};db.sales.forEach(s=>{m[s.customer]=(m[s.customer]||0)+s.total});customersTable.innerHTML=Object.keys(m).length?`<table class="table"><tr><th>Customer</th><th>Total Spent</th></tr>${Object.entries(m).sort((a,b)=>b[1]-a[1]).map(x=>`<tr><td>${esc(x[0])}</td><td>${money(x[1])}</td></tr>`).join('')}</table>`:'<p class="muted">No customers yet.</p>'}
+function renderReport(){let month=reportMonth.value;if(!month){let d=new Date();month=d.toISOString().slice(0,7);reportMonth.value=month}let a=db.sales.filter(s=>s.date.slice(0,7)===month),sales=a.reduce((x,s)=>x+s.total,0),profit=a.reduce((x,s)=>x+s.profit,0);reportBox.innerHTML=`<h3>${month}</h3><div class="grid stats"><div><span class="muted">Transactions</span><div class="statnum">${a.length}</div></div><div><span class="muted">Sales</span><div class="statnum">${money(sales)}</div></div><div><span class="muted">Profit</span><div class="statnum">${money(profit)}</div></div><div><span class="muted">Units Sold</span><div class="statnum">${a.reduce((x,s)=>x+s.qty,0)}</div></div></div><button class="btn no-print" onclick="window.print()">Print Report</button>`}
+function loadSettings(){setName.value=db.settings.name;setCurrency.value=db.settings.currency;logoPreview.src=db.settings.logo;logoPreview.style.display=db.settings.logo?'block':'none'}
+function saveSettings(){db.settings.name=setName.value.trim()||'My Small Business';db.settings.currency=setCurrency.value;let f=setLogo.files[0];if(f){let r=new FileReader();r.onload=()=>{db.settings.logo=r.result;save()};r.readAsDataURL(f)}else save();alert('Settings saved.')}
+function backup(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inventory-sales-backup.json';a.click();URL.revokeObjectURL(a.href)}
+function restore(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=async()=>{try{db=JSON.parse(r.result);normalizeDB();await save();alert('Backup restored.')}catch(x){alert('Invalid backup file.')}};r.readAsText(f)}
+function restoreDemo(){if(!confirm('Load demo data? This will replace current data.'))return;db={settings:{name:'Demo Coffee Shop',currency:'₱',logo:''},products:[{id:'1',name:'Iced Coffee',sku:'COF-001',barcode:'4800000000011',cost:35,price:85,stock:18,min:5},{id:'2',name:'Chocolate Cake',sku:'CKE-001',barcode:'4800000000028',cost:70,price:150,stock:7,min:3},{id:'3',name:'Sandwich',sku:'SND-001',barcode:'4800000000035',cost:45,price:110,stock:3,min:5}],sales:[],expenses:[],stockMoves:[]};save();alert('Demo data loaded.')}
+function resetAll(){if(confirm('Reset all products and sales?')){db={settings:{name:'My Small Business',currency:'₱',logo:''},products:[],sales:[],expenses:[],stockMoves:[]};save()}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+if('serviceWorker' in navigator && location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+
+<script>
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
